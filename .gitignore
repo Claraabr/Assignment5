@@ -1,0 +1,12 @@
+# dependencies and build output
+node_modules/
+dist/
+
+# API key — never commit
+.env
+.env.local
+
+# OS / editor clutter
+.DS_Store
+Thumbs.db
+.vscode/
