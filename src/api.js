@@ -2,6 +2,8 @@
 // No React in this file: it fetches data and returns plain objects.
 
 const BASE_URL = 'https://api.openweathermap.org/data/2.5';
+
+// Vite reads the key from the .env file (variables must start with VITE_)
 const API_KEY = import.meta.env.VITE_OPENWEATHER_API_KEY;
 
 export const UNIT_LABELS = {
@@ -24,13 +26,10 @@ export async function loadWeather(city, units) {
     throw new Error('no-key');
   }
 
-  const params = new URLSearchParams({ q: city, units, appid: API_KEY });
+  const params = new URLSearchParams({ q: city, units: units, appid: API_KEY });
 
-  // the two requests don't depend on each other, so they run at the same time
-  const [current, forecast] = await Promise.all([
-    getJSON(`${BASE_URL}/weather?${params}`),
-    getJSON(`${BASE_URL}/forecast?${params}`),
-  ]);
+  const current = await getJSON(`${BASE_URL}/weather?${params}`);
+  const forecast = await getJSON(`${BASE_URL}/forecast?${params}`);
 
   return {
     current: toCurrent(current, units),
@@ -41,13 +40,19 @@ export async function loadWeather(city, units) {
 // API shape -> our shape, so the components only get what they need
 function toCurrent(data, units) {
   const weather = data.weather[0];
+
+  // metric gives the wind in m/s (we convert to km/h), imperial already gives mph
+  let wind = data.wind.speed;
+  if (units === 'metric') {
+    wind = wind * 3.6;
+  }
+
   return {
-    city: `${data.name}, ${data.sys.country}`,
+    name: `${data.name}, ${data.sys.country}`,
     temp: Math.round(data.main.temp),
     feelsLike: Math.round(data.main.feels_like),
     humidity: data.main.humidity,
-    // metric gives m/s (converted to km/h), imperial already gives mph
-    wind: Math.round(units === 'metric' ? data.wind.speed * 3.6 : data.wind.speed),
+    wind: Math.round(wind),
     description: weather.description,
     icon: weather.icon,
   };

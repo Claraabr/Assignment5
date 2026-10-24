@@ -47,12 +47,6 @@ button:disabled {
   cursor: wait;
 }
 
-button:focus-visible,
-input:focus-visible {
-  outline: 3px solid orange;
-  outline-offset: 2px;
-}
-
 /* unit toggle: two buttons stuck together */
 .unit-toggle {
   display: flex;
@@ -76,6 +70,11 @@ input:focus-visible {
 .unit-toggle button.active {
   background-color: darkcyan;
   color: white;
+}
+
+.unit-toggle button:disabled {
+  opacity: 0.6;
+  cursor: wait;
 }
 
 /* search form */
@@ -105,16 +104,6 @@ input:focus-visible {
   color: red;
   margin: 6px 0 0;
   font-size: 14px;
-}
-
-/* hidden on screen but still read by screen readers */
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
 }
 
 /* status: idle / loading / error */
@@ -204,13 +193,13 @@ input:focus-visible {
   gap: 10px;
 }
 
-/* forecast: as many columns as fit, at least 100px each */
+/* forecast: 5 columns (3 on phones, see below) */
 .forecast {
   list-style: none;
   padding: 0;
   margin: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  grid-template-columns: repeat(5, 1fr);
   gap: 10px;
 }
 
@@ -245,6 +234,6 @@ input:focus-visible {
   }
 
   .forecast {
-    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+    grid-template-columns: repeat(3, 1fr);
   }
 }

@@ -7,93 +7,76 @@ import StatusMessage from './components/StatusMessage.jsx';
 import WeatherCard from './components/WeatherCard.jsx';
 import Forecast from './components/Forecast.jsx';
 
-const STORAGE_KEY = 'weather-react:last-city';
-
-// localStorage can throw (private mode, blocked storage), so it's wrapped
-function readSavedCity() {
-  try {
-    return localStorage.getItem(STORAGE_KEY) ?? '';
-  } catch {
-    return '';
-  }
-}
+const STORAGE_KEY = 'lastCity';
 
 export default function App() {
   // App owns the state that several components need (lifting state up)
-  const [city, setCity] = useState(readSavedCity); // the last searched city (the query)
-  const [units, setUnits] = useState('metric'); // 'metric' or 'imperial'
-  const [weather, setWeather] = useState(null); // { current, days }
+  const [city, setCity] = useState(localStorage.getItem(STORAGE_KEY) || ''); // last searched city
+  const [units, setUnits] = useState('metric'); // 'metric' (°C) or 'imperial' (°F)
+  const [weather, setWeather] = useState(null); // the data from the API
   const [status, setStatus] = useState('idle'); // idle, loading, success, error
   const [errorMessage, setErrorMessage] = useState('');
-  const [reloadKey, setReloadKey] = useState(0); // bumped to fetch again (Retry, same city)
 
-  // Effect 1: fetch the weather whenever the city, the units or reloadKey change
+  // fetches the weather and puts the result in state
+  async function load(cityName, unitsName) {
+    setStatus('loading');
+    try {
+      const data = await loadWeather(cityName, unitsName);
+      setWeather({ ...data, searchedCity: cityName }); // also keep which city this data is for
+      setStatus('success');
+    } catch (err) {
+      setErrorMessage(friendlyError(err, cityName));
+      setStatus('error');
+    }
+  }
+
+  // Effect 1: fetch the weather when the page opens and whenever the city or the units change
   useEffect(() => {
     if (city === '') return; // nothing searched yet: stay idle
+    load(city, units);
+  }, [city, units]);
 
-    let ignore = false; // set to true if a newer request starts before this one ends
-
-    async function load() {
-      setStatus('loading');
-      try {
-        const data = await loadWeather(city, units);
-        if (ignore) return;
-        setWeather({ ...data, query: city }); // keep the city this data belongs to
-        setStatus('success');
-      } catch (err) {
-        if (ignore) return;
-        setErrorMessage(friendlyError(err, city));
-        setStatus('error');
-      }
-    }
-
-    load();
-
-    // cleanup: runs before the next fetch starts, so an old answer can't overwrite a new one
-    return () => {
-      ignore = true;
-    };
-  }, [city, units, reloadKey]);
-
-  // Effect 2: remember the last city that worked, so a refresh shows it again.
-  // It depends on weather (not city): weather only changes when a fetch succeeds,
-  // so a misspelled city is never saved.
+  // Effect 2: save the last city that worked, so a refresh shows it again.
+  // weather only changes when a fetch succeeds, so a wrong city is never saved.
   useEffect(() => {
-    if (!weather) return;
-    try {
-      localStorage.setItem(STORAGE_KEY, weather.query);
-    } catch {
-      // storage blocked: the app still works, it just won't remember
-    }
+    if (weather === null) return;
+    localStorage.setItem(STORAGE_KEY, weather.searchedCity);
   }, [weather]);
 
   function handleSearch(newCity) {
-    setCity(newCity);
-    // also bump the key so searching the same city again still refreshes it
-    setReloadKey((k) => k + 1);
+    if (newCity === city) {
+      load(city, units); // same city: city doesn't change so the effect won't run, we fetch ourselves
+    } else {
+      setCity(newCity); // new city: effect 1 fetches it
+    }
   }
 
   function handleRetry() {
-    setReloadKey((k) => k + 1);
+    load(city, units);
   }
 
   const labels = UNIT_LABELS[units];
-  const message = status === 'loading' ? `Loading weather for ${city}...` : errorMessage;
+  const isLoading = status === 'loading';
+
+  let message = errorMessage;
+  if (isLoading) {
+    message = `Loading weather for ${city}...`;
+  }
 
   return (
     <main className="container">
       <header className="top-bar">
         <h1>Weather Dashboard</h1>
-        <UnitToggle units={units} onChange={setUnits} />
+        <UnitToggle units={units} onChange={setUnits} disabled={isLoading} />
       </header>
 
-      <SearchBar onSearch={handleSearch} disabled={status === 'loading'} />
+      <SearchBar onSearch={handleSearch} disabled={isLoading} />
 
       <StatusMessage status={status} message={message} onRetry={handleRetry} />
 
-      {status === 'success' && weather && (
+      {status === 'success' && (
         <div className="results">
-          <Card title={weather.current.city}>
+          <Card title={weather.current.name}>
             <WeatherCard weather={weather.current} labels={labels} />
           </Card>
 

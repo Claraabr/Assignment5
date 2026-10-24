@@ -4,7 +4,7 @@ import { iconUrl } from '../api.js';
 export default function WeatherCard({ weather, labels }) {
   return (
     <div className="current">
-      <img src={iconUrl(weather.icon, '@2x')} alt={weather.description} width="100" height="100" />
+      <img src={iconUrl(weather.icon, '@2x')} alt={weather.description} />
       <p className="temperature">
         {weather.temp}
         {labels.temp}

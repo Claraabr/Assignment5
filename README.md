@@ -31,14 +31,14 @@ If you add or change `.env` while the server is running, stop it (Ctrl + C) and 
 
 Without a key the app still opens and shows "API key missing" when you search.
 
-`.env` is in `.gitignore`, so the key is not pushed to GitHub. (Vite still puts it in the JavaScript sent to the browser, so this keeps it off GitHub, not secret from users.)
+`.env` is in `.gitignore`, so the key is not pushed to GitHub.
 
 Other commands: `npm run build` makes the production version in `dist/`, `npm run preview` serves that build.
 
 ## Component architecture
 
 ```
-App                      owns all shared state, fetches the data
+App                      owns the shared state, fetches the data
 ├── UnitToggle           °C / °F buttons
 ├── SearchBar            controlled form with validation
 ├── StatusMessage        idle / loading / error (+ Retry)
@@ -73,26 +73,27 @@ Each component is in its own file and does one job. All of them are function com
 |---|---|---|
 | `city` | App | the last searched city (the query). Starts from localStorage |
 | `units` | App | `'metric'` or `'imperial'` |
-| `weather` | App | the data from the API: `{ current, days }` |
+| `weather` | App | the data from the API: `{ current, days, searchedCity }` |
 | `status` | App | `'idle'`, `'loading'`, `'success'` or `'error'` |
 | `errorMessage` | App | the friendly message shown on error |
-| `reloadKey` | App | a number bumped to fetch again (Retry, or searching the same city twice) |
 | `text` | SearchBar | what is typed in the input (controlled) |
-| `error` | SearchBar | the validation message under the field |
+| `errors` | SearchBar | the validation errors, shown under the field |
 
-`city`, `units` and `weather` are in App because several components need them (lifting state up). `text` and `error` stay in SearchBar because nothing else needs them: SearchBar only tells App about a city once it's valid, with `onSearch`.
+`city`, `units` and `weather` are in App because several components need them (lifting state up). `text` and `errors` stay in SearchBar because nothing else needs them: SearchBar only tells App about a city once it's valid, with `onSearch`.
 
 ## Effects (`useEffect`)
 
-1. **Fetching the weather** in App, with `[city, units, reloadKey]` as dependencies. It runs again when you search, switch °C/°F, or press Retry. It uses `try/catch` and the `response.ok` check like Assignment 4, and the result goes into state, not the DOM. The cleanup sets an `ignore` flag so that if you search quickly twice, the older answer can't replace the newer one.
+1. **Fetching the weather** in App, with `[city, units]` as dependencies. It runs when the page opens (if a city was saved), when you search a new city, and when you switch °C/°F. Inside, the `load` function uses `try/catch` and the `response.ok` check like Assignment 4, and the result goes into state, not the DOM.
 2. **Remembering the last city** with `[weather]`: `weather` only changes when a fetch succeeds, so the city saved in localStorage is always one that worked (a misspelled city is never saved). On the next visit `city` starts with it, so effect 1 fetches it straight away.
 
-In development, React StrictMode runs effects twice on purpose. Because of the cleanup flag only one result is used.
+Retry, or searching the same city again, calls `load` directly, because `city` doesn't change so effect 1 wouldn't run again.
+
+In development, React StrictMode runs effects twice on purpose, so you may see two requests when the page opens. Both give the same result.
 
 ## Props (parent → child)
 
 - App → SearchBar: `onSearch`, `disabled`
-- App → UnitToggle: `units`, `onChange`
+- App → UnitToggle: `units`, `onChange`, `disabled`
 - App → StatusMessage: `status`, `message`, `onRetry`
 - App → Card: `title`, `children`
 - App → WeatherCard: `weather`, `labels`
@@ -105,12 +106,12 @@ Children talk back to App with callback props (`onSearch`, `onChange`, `onRetry`
 ## Loading, error and success states
 
 - **idle:** "Search for a city to see the weather."
-- **loading:** orange spinner + "Loading weather for Beirut...", and the Search button is disabled
+- **loading:** orange spinner + "Loading weather for Beirut...", and the Search and °C/°F buttons are disabled
 - **error:** red message + Retry button. Messages for: missing API key, invalid key (401), city not found (404), other server errors, no internet
 - **success:** current weather card + forecast
 
 ## Form validation
 
-The city field is required, 60 characters max, and only accepts letters (any language), spaces and `. , ' -` (so "Saint-Étienne" or "Paris, FR" work). The error shows under the field and disappears as soon as it's fixed. An empty submit shows a message and doesn't fetch anything.
+Like `validate(form)` from Session 15: the city is required and must be 60 characters max. The error shows under the field and disappears as soon as it's fixed. An empty submit shows a message and doesn't fetch anything.
 
 To test the error state on purpose: search a city that doesn't exist (e.g. "Qwertyville"), or put a wrong key in `.env`.

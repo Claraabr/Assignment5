@@ -2,10 +2,13 @@
 export default function StatusMessage({ status, message, onRetry }) {
   if (status === 'success') return null;
 
-  const text = status === 'idle' ? 'Search for a city to see the weather.' : message;
+  let text = message;
+  if (status === 'idle') {
+    text = 'Search for a city to see the weather.';
+  }
 
   return (
-    <div className="status" data-state={status} role={status === 'error' ? 'alert' : 'status'}>
+    <div className="status" data-state={status}>
       <p>{text}</p>
       {status === 'error' && (
         <button type="button" onClick={onRetry}>
