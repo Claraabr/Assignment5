@@ -6,6 +6,8 @@ Search for a city to see the current weather (temperature, conditions, icon, fee
 
 Data comes from the [OpenWeatherMap API](https://openweathermap.org/api).
 
+![Screenshot](screenshot.png)
+
 ## Setup
 
 You need [Node.js](https://nodejs.org) 20.19+ or 22.12+ (check with `node -v`).
